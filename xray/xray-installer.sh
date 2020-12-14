@@ -8,7 +8,7 @@ set -e
 XRAY_LOCATION_ASSET=${XRAY_LOCATION_ASSET:-/usr/local/share/xray}
 XRAY_LOCATION_CONFIG=${XRAY_LOCATION_CONFIG:-/usr/local/etc/xray}
 BIN_PATH='/usr/local/bin'
-LOG_PATH='/var/log'
+LOG_PATH='/var/log/xray'
 SERVICE_PATH='/etc/systemd/system'
 XRAY_ARCHIVE_NAME='Xray-linux-64.zip'
 XRAY_URL="https://github.com/XTLS/Xray-core/releases/latest/download/${XRAY_ARCHIVE_NAME}"
@@ -107,8 +107,8 @@ function remove_all() {
     rm -rf "${XRAY_LOCATION_ASSET}"
     echo "Removing ${XRAY_LOCATION_CONFIG}"
     rm -rf "${XRAY_LOCATION_CONFIG}"
-    echo "Removing ${LOG_PATH}/xray"
-    rm -rf "${LOG_PATH}/xray"
+    echo "Removing ${LOG_PATH}"
+    rm -rf "${LOG_PATH}"
     echo "Removing ${BIN_PATH}/xray"
     rm -f "${BIN_PATH}/xray"
     echo 'Finished'
@@ -152,7 +152,7 @@ ${SERVICE_PATH}/xray.service
 ${SERVICE_PATH}/xray@.service
 ${XRAY_LOCATION_ASSET}
 ${XRAY_LOCATION_CONFIG}
-${LOG_PATH}/xray
+${LOG_PATH}
 ${BIN_PATH}/xray
 
 Remember to stop Xray first

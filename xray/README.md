@@ -40,7 +40,7 @@ You can edit these values to customize the installation.
 XRAY_LOCATION_ASSET=${XRAY_LOCATION_ASSET:-/usr/local/share/xray}
 XRAY_LOCATION_CONFIG=${XRAY_LOCATION_CONFIG:-/usr/local/etc/xray}
 BIN_PATH='/usr/local/bin'
-LOG_PATH='/var/log'
+LOG_PATH='/var/log/xray'
 SERVICE_PATH='/etc/systemd/system'
 XRAY_ARCHIVE_NAME='Xray-linux-64.zip'
 XRAY_URL="https://github.com/XTLS/Xray-core/releases/latest/download/${XRAY_ARCHIVE_NAME}"
