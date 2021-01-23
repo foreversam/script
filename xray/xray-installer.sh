@@ -66,12 +66,35 @@ function install_xray() {
     echo 'Downloading Xray archive'
     dl "${XRAY_URL}" "${tmp_dir}/${XRAY_ARCHIVE_NAME}"
     echo "Installing Xray-core to ${BIN_PATH}"
+    if [[ ! -d "${BIN_PATH}" ]]; then
+        mkdir -p "${BIN_PATH}"
+    fi
     unzip -q "${tmp_dir}/${XRAY_ARCHIVE_NAME}" -d "${tmp_dir}"
     install -D -m 755 "${tmp_dir}/xray" "${BIN_PATH}"
     if [[ "$1" == 'with-systemd' ]] && [[ -d "${SERVICE_PATH}" ]]; then
         echo 'Installing Xray systemd service'
-        install -D -m 644 "${tmp_dir}/systemd/system/xray.service" "${SERVICE_PATH}"
-        install -D -m 644 "${tmp_dir}/systemd/system/xray@.service" "${SERVICE_PATH}"
+        cat > "${SERVICE_PATH}/xray.service" <<EOF
+[Unit]
+Description=Xray Service
+Documentation=https://xtls.github.io/
+After=network.target nss-lookup.target
+
+[Service]
+# User=xray
+# CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+# AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+# NoNewPrivileges=true
+Environment="XRAY_LOCATION_ASSET=/usr/local/share/xray" "XRAY_LOCATION_CONFIG=/usr/local/etc/xray"
+ExecStartPre=/usr/local/bin/xray run -test
+ExecStart=/usr/local/bin/xray run
+Restart=on-failure
+RestartPreventExitStatus=23
+# LimitNPROC=10000
+# LimitNOFILE=1000000
+
+[Install]
+WantedBy=multi-user.target
+EOF
         systemctl daemon-reload
     else
         echo 'Skipping installing Xray systemd service'
@@ -89,6 +112,9 @@ function install_geodat() {
     dl "${GEOIP_URL}" "${tmp_dir}/geoip.dat"
     dl "${GEOSITE_URL}" "${tmp_dir}/geosite.dat"
     echo "Installing geoip and geosite to ${XRAY_LOCATION_ASSET}"
+    if [[ ! -d "${XRAY_LOCATION_ASSET}" ]]; then
+        mkdir -p "${XRAY_LOCATION_ASSET}"
+    fi
     install -D -m 644 "${tmp_dir}/geoip.dat" "${XRAY_LOCATION_ASSET}"
     install -D -m 644 "${tmp_dir}/geosite.dat" "${XRAY_LOCATION_ASSET}"
     echo 'Cleaning up'
