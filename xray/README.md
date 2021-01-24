@@ -4,11 +4,10 @@ An [Xray](https://github.com/XTLS/Xray-core) installation script
 
 ## Usage
 
-Make sure you have installed *curl* and *unzip*.
+Make sure you have installed **curl** and **unzip**.
 
-```bash
-# For Debian
-sudo apt install curl unzip
+```
+$ sudo apt install curl unzip
 ```
 
 Download this script via curl.
@@ -16,12 +15,12 @@ Download this script via curl.
 ```
 $ sudo curl -LO --progress-bar 'https://raw.githubusercontent.com/foreversam/script/main/xray/xray-installer.sh'
 $ sudo chmod +x ./xray-installer.sh
-$ sudo ./xray-installer.sh help
 ```
 
 This will print the help message.
 
 ```
+$ ./xray-installer.sh help
 Usage: xray-installer.sh <command> [option]
 Example: xray-installer.sh install xray --with-service
 
