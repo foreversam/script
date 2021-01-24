@@ -1,22 +1,40 @@
-#!/bin/bash
-# Xray Installer - An Xray installation script
+#!/usr/bin/env bash
+# xray-installer.sh - An Xray installation script
 # License: MIT
 
 set -e
 
 # You can edit these values to customize the installation
-XRAY_LOCATION_ASSET=${XRAY_LOCATION_ASSET:-/usr/local/share/xray}
-XRAY_LOCATION_CONFIG=${XRAY_LOCATION_CONFIG:-/usr/local/etc/xray}
-BIN_PATH='/usr/local/bin'
-LOG_PATH='/var/log/xray'
-SERVICE_PATH='/etc/systemd/system'
-XRAY_ARCHIVE_NAME='Xray-linux-64.zip'
-XRAY_URL="https://github.com/XTLS/Xray-core/releases/latest/download/${XRAY_ARCHIVE_NAME}"
-GEOIP_URL='https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat'
-GEOSITE_URL='https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat'
+export ASSET_PATH=${XRAY_LOCATION_ASSET:-/usr/local/share/xray}
+export BIN_PATH='/usr/local/bin'
+export CONFIG_PATH=${XRAY_LOCATION_CONFIG:-/usr/local/etc/xray}
+export GEOIP_URL='https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat'
+export GEOSITE_URL='https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat'
+export LOG_PATH='/var/log/xray'
+# export PROXY='socks5h://127.0.0.1:1080'
+export SERVICE_PATH='/etc/systemd/system'
+export XRAY_VERSION='latest'
 
-# confirm <prompt>
-function confirm() {
+# Show help message
+show_help_msg() {
+    cat<<EOF
+Usage: xray-installer.sh <command> [option]
+Example: xray-installer.sh install xray --with-service
+
+Command:
+  install  install xray or geodat
+  remove   remove xray or geodat
+  purge    remove all related files/folders
+  env      show environment
+  help     print this help message
+
+Option:
+  --with-service  also install an example systemd service
+EOF
+}
+
+# Enter y to continue
+confirm() {
     read -r -p "$1 [y/N] " response
     case "${response}" in
         [yY])
@@ -28,51 +46,93 @@ function confirm() {
     esac
 }
 
-# Check if running as root
-function check_root() {
-    if [[ $(id -u) != 0 ]]; then
-        echo 'root required'
+# Download file from the given url via curl
+dl() {
+    curl -x "${PROXY}" -L --progress-bar "$1" -o "$2"
+}
+
+# Check if running as the specified user
+check_user() {
+    if [[ -z "$1" ]]; then
+        echo 'function check_user() require an argument'
+        exit 1
+    fi
+    if [[ $(id -u) != "$1" ]]; then
+        echo "You need to run as $(id -un "$1")"
         exit 1
     fi
 }
 
-# Download file from the given url via curl
-# dl <url> <output>
-function dl() {
-    curl -L --progress-bar "$1" -o "$2"
-}
-
-# Print help message
-function print_help_msg() {
+# Show environment
+show_env() {
     cat<<EOF
-Xray Installer - An Xray installation script
-Usage: xray-installer.sh [OPTION]
-Example: xray-installer.sh --show-env
-
-Options:
-  --install-xray               download and install Xray
-  --install-xray-with-systemd  same as --install-xray, but also install systemd service
-  --install-geodat             download and install geoip and geosite
-  --remove-all                 force remove all Xray files
-  --show-env                   show script environment
+ASSET_PATH=${ASSET_PATH}
+BIN_PATH=${BIN_PATH}
+CONFIG_PATH=${CONFIG_PATH}
+GEOIP_URL=${GEOIP_URL}
+GEOSITE_URL=${GEOSITE_URL}
+LOG_PATH=${LOG_PATH}
+PROXY=${PROXY}
+SERVICE_PATH=${SERVICE_PATH}
+XRAY_VERSION=${XRAY_VERSION}
 EOF
 }
 
-# Download and install Xray
-# install_xray [with-systemd]
-function install_xray() {
+# Get Xray archive name
+get_xray_archive_name() {
+if [[ "$(uname)" == 'Linux' ]]; then
+    case "$(uname -m)" in
+        'amd64' | 'x86_64')
+            XRAY_ARCHIVE_NAME='Xray-linux-64.zip'
+            ;;
+        'armv8' | 'aarch64')
+            if [[ "$(uname -o)" == 'Android' ]]; then
+                XRAY_ARCHIVE_NAME='Xray-android-arm64-v8a.zip'
+            fi
+            XRAY_ARCHIVE_NAME='Xray-linux-arm64-v8a.zip'
+            ;;
+    esac
+fi
+}
+
+# Install Xray
+install_xray() {
+    get_xray_archive_name
+    if [[ -z "${XRAY_ARCHIVE_NAME}" ]]; then
+        echo "$(uname -m) is not supported by this script"
+        exit 1
+    fi
+    if [[ "${XRAY_VERSION}" == 'latest' ]]; then
+        local xray_url="https://github.com/XTLS/Xray-core/releases/latest/download/${XRAY_ARCHIVE_NAME}"
+    else
+        local xray_url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/${XRAY_ARCHIVE_NAME}"
+    fi
+    echo "You are going to download ${xray_url}"
+    if ! confirm 'Do you want to continue?'; then
+        exit
+    fi
     tmp_dir="$(mktemp -d)"
     echo "Created a temporary directory ${tmp_dir}"
-    echo 'Downloading Xray archive'
-    dl "${XRAY_URL}" "${tmp_dir}/${XRAY_ARCHIVE_NAME}"
-    echo "Installing Xray-core to ${BIN_PATH}"
+    echo "Downloading ${XRAY_ARCHIVE_NAME}"
+    if ! dl "${xray_url}" "${tmp_dir}/${XRAY_ARCHIVE_NAME}"; then
+        echo "Failed to download ${xray_url}"
+        echo "Removing ${tmp_dir}"
+        rm -rf "${tmp_dir}"
+        exit 1
+    fi
+    if ! unzip -q "${tmp_dir}/${XRAY_ARCHIVE_NAME}" -d "${tmp_dir}"; then
+        echo "Failed to unzip ${tmp_dir}/${XRAY_ARCHIVE_NAME}"
+        echo "Removing ${tmp_dir}"
+        rm -rf "${tmp_dir}"
+        exit 1
+    fi
+    echo "Installing ${BIN_PATH}/xray"
     if [[ ! -d "${BIN_PATH}" ]]; then
         mkdir -p "${BIN_PATH}"
     fi
-    unzip -q "${tmp_dir}/${XRAY_ARCHIVE_NAME}" -d "${tmp_dir}"
     install -D -m 755 "${tmp_dir}/xray" "${BIN_PATH}"
-    if [[ "$1" == 'with-systemd' ]] && [[ -d "${SERVICE_PATH}" ]]; then
-        echo 'Installing Xray systemd service'
+    if [[ "$1" == 'with-service' ]] && [[ -d "${SERVICE_PATH}" ]] && [[ ! -f "${SERVICE_PATH}/xray.service" ]]; then
+        echo "Installing ${SERVICE_PATH}/xray.service"
         cat > "${SERVICE_PATH}/xray.service" <<EOF
 [Unit]
 Description=Xray Service
@@ -84,7 +144,7 @@ After=network.target nss-lookup.target
 # CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 # AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 # NoNewPrivileges=true
-Environment="XRAY_LOCATION_ASSET=/usr/local/share/xray" "XRAY_LOCATION_CONFIG=/usr/local/etc/xray"
+Environment="XRAY_LOCATION_ASSET=${ASSET_PATH}" "XRAY_LOCATION_CONFIG=${CONFIG_PATH}"
 ExecStartPre=/usr/local/bin/xray run -test
 ExecStart=/usr/local/bin/xray run
 Restart=on-failure
@@ -97,104 +157,153 @@ WantedBy=multi-user.target
 EOF
         systemctl daemon-reload
     else
-        echo 'Skipping installing Xray systemd service'
+        echo 'Skipping installing xray.service'
     fi
-    echo 'Cleaning up'
+    echo "Removing ${tmp_dir}"
     rm -rf "${tmp_dir}"
+    if [[ -f "${SERVICE_PATH}/xray.service" ]]; then
+        echo 'Restarting xray.service'
+        if ! systemctl restart xray; then
+            echo 'Failed to restart xray.service'
+            exit 1
+        fi
+    fi
+    "${BIN_PATH}"/xray version
     echo 'Finished'
 }
 
-# Download and install geoip.dat and geosite.dat
-function install_geodat() {
+# Install GeoIP and GeoSite
+install_geodat() {
+    echo "You are going to download ${GEOIP_URL}, ${GEOSITE_URL}"
+    if ! confirm 'Do you want to continue?'; then
+        exit
+    fi
     tmp_dir="$(mktemp -d)"
     echo "Created a temporary directory ${tmp_dir}"
-    echo 'Downloading geoip and geosite'
-    dl "${GEOIP_URL}" "${tmp_dir}/geoip.dat"
-    dl "${GEOSITE_URL}" "${tmp_dir}/geosite.dat"
-    echo "Installing geoip and geosite to ${XRAY_LOCATION_ASSET}"
+    echo 'Downloading GeoIP and GeoSite'
+    if ! dl "${GEOIP_URL}" "${tmp_dir}/geoip.dat"; then
+        echo "Failed to download ${GEOIP_URL}"
+        echo "Removing ${tmp_dir}"
+        rm -rf "${tmp_dir}"
+        exit 1
+    fi
+    if ! dl "${GEOSITE_URL}" "${tmp_dir}/geosite.dat"; then
+        echo "Failed to download ${GEOSITE_URL}"
+        echo "Removing ${tmp_dir}"
+        rm -rf "${tmp_dir}"
+        exit 1
+    fi
+    echo "Installing ${ASSET_PATH}/geoip.dat, ${ASSET_PATH}/geosite.dat"
     if [[ ! -d "${XRAY_LOCATION_ASSET}" ]]; then
         mkdir -p "${XRAY_LOCATION_ASSET}"
     fi
-    install -D -m 644 "${tmp_dir}/geoip.dat" "${XRAY_LOCATION_ASSET}"
-    install -D -m 644 "${tmp_dir}/geosite.dat" "${XRAY_LOCATION_ASSET}"
-    echo 'Cleaning up'
+    install -D -m 644 "${tmp_dir}/geoip.dat" "${ASSET_PATH}"
+    install -D -m 644 "${tmp_dir}/geosite.dat" "${ASSET_PATH}"
+    echo "Removing ${tmp_dir}"
     rm -rf "${tmp_dir}"
+    if [[ -f "${SERVICE_PATH}/xray.service" ]]; then
+        echo 'Restarting xray.service'
+        if ! systemctl restart xray; then
+            echo 'Failed to restart xray.service'
+            exit 1
+        fi
+    fi
     echo 'Finished'
 }
 
-# Force remove all Xray files
-function remove_all() {
-    echo 'Stopping xray.service'
-    systemctl stop xray.service
-    echo "Removing ${SERVICE_PATH}/xray.service, ${SERVICE_PATH}/xray@.service"
-    rm -f "${SERVICE_PATH}/xray.service" "${SERVICE_PATH}/xray@.service"
-    systemctl daemon-reload
-    echo "Removing ${XRAY_LOCATION_ASSET}"
-    rm -rf "${XRAY_LOCATION_ASSET}"
-    echo "Removing ${XRAY_LOCATION_CONFIG}"
-    rm -rf "${XRAY_LOCATION_CONFIG}"
-    echo "Removing ${LOG_PATH}"
-    rm -rf "${LOG_PATH}"
-    echo "Removing ${BIN_PATH}/xray"
-    rm -f "${BIN_PATH}/xray"
-    echo 'Finished'
-}
-
-# Show environment
-function show_env() {
-    cat<<EOF
-XRAY_LOCATION_ASSET=${XRAY_LOCATION_ASSET}
-XRAY_LOCATION_CONFIG=${XRAY_LOCATION_CONFIG}
-BIN_PATH=${BIN_PATH}
-LOG_PATH=${LOG_PATH}
-SERVICE_PATH=${SERVICE_PATH}
-XRAY_ARCHIVE_NAME=${XRAY_ARCHIVE_NAME}
-XRAY_URL=${XRAY_URL}
-GEOIP_URL=${GEOIP_URL}
-GEOSITE_URL=${GEOSITE_URL}
-EOF
-}
-
-# Let's break the wall :D
-function main() {
+# Remove
+remove() {
     case "$1" in
-        '--install-xray')
-            check_root
-            install_xray
+        'xray')
+            local to_be_removed=("${BIN_PATH}/xray" "${SERVICE_PATH}/xray.service")
             ;;
-        '--install-xray-with-systemd')
-            check_root
-            install_xray with-systemd
+        'geodat')
+            local to_be_removed=("${ASSET_PATH}")
             ;;
-        '--install-geodat')
-            check_root
-            install_geodat
-            ;;
-        '--remove-all')
-            cat<<EOF
-This will force remove the listed files/directories:
-
-${SERVICE_PATH}/xray.service
-${SERVICE_PATH}/xray@.service
-${XRAY_LOCATION_ASSET}
-${XRAY_LOCATION_CONFIG}
-${LOG_PATH}
-${BIN_PATH}/xray
-
-Remember to stop Xray first
-EOF
-            if confirm 'Remove them?'; then
-                check_root
-                remove_all
-            fi
-            ;;
-        '--show-env')
-            show_env
+        'purge')
+            local to_be_removed=("${BIN_PATH}/xray" "${SERVICE_PATH}/xray.service" "${ASSET_PATH}" "${CONFIG_PATH}" "${LOG_PATH}")
             ;;
         *)
-            print_help_msg
+            echo 'function remove() require an valid argument(xray, geodat, purge)'
+            exit 1
+            ;;
+    esac
+    echo 'The listed files/folders will be removed:'
+    for i in "${!to_be_removed[@]}"; do
+        echo "  ${to_be_removed[$i]}"
+    done
+    if ! confirm 'Do you want to continue?'; then
+        exit
+    fi
+    if [[ "$1" != 'geodat' ]] && [[ -f "${SERVICE_PATH}/xray.service" ]]; then
+        echo 'Stopping xray.service'
+        if ! systemctl stop xray; then
+            echo 'Failed to stop xray.service'
+            exit 1
+        fi
+    fi
+    echo 'Removing'
+    rm -rf "${to_be_removed[@]}"
+    if [[ "$1" != 'geodat' ]] && [[ -d "${SERVICE_PATH}" ]]; then
+        systemctl daemon-reload
+    fi
+    echo "Finished"
+}
+
+main() {
+    case "$1" in
+        'install')
+            check_user 0
+            case "$2" in
+                'xray')
+                    if [[ "$3" == '--with-service' ]]; then
+                        install_xray with-service
+                    else
+                        install_xray
+                    fi
+                    ;;
+                'geodat')
+                    install_geodat
+                    ;;
+                *)
+                    echo 'Example: xray-installer.sh install xray --with-service'
+                    echo "Try 'xray-installer.sh help' for help"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        'remove')
+            check_user 0
+            case "$2" in
+                'xray')
+                    remove xray
+                    ;;
+                'geodat')
+                    remove geodat
+                    ;;
+                *)
+                    echo 'Example: xray-installer.sh remove xray'
+                    echo "Try 'xray-installer.sh help' for help"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        'purge')
+            check_user 0
+            remove purge
+            ;;
+        'env')
+            show_env
+            ;;
+        'help')
+            show_help_msg
+            ;;
+        *)
+            echo "Invalid command: '$1'"
+            echo "Try 'xray-installer.sh help' for help"
+            exit 1
             ;;
     esac
 }
 
-main "$1"
+main "$@"
