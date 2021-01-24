@@ -194,8 +194,8 @@ install_geodat() {
         exit 1
     fi
     echo "Installing ${ASSET_PATH}/geoip.dat, ${ASSET_PATH}/geosite.dat"
-    if [[ ! -d "${XRAY_LOCATION_ASSET}" ]]; then
-        mkdir -p "${XRAY_LOCATION_ASSET}"
+    if [[ ! -d "${ASSET_PATH}" ]]; then
+        mkdir -p "${ASSET_PATH}"
     fi
     install -D -m 644 "${tmp_dir}/geoip.dat" "${ASSET_PATH}"
     install -D -m 644 "${tmp_dir}/geosite.dat" "${ASSET_PATH}"
