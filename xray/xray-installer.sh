@@ -161,7 +161,7 @@ EOF
     fi
     echo "Removing ${tmp_dir}"
     rm -rf "${tmp_dir}"
-    if [[ -f "${SERVICE_PATH}/xray.service" ]]; then
+    if [[ -f "${SERVICE_PATH}/xray.service" ]] && confirm 'Restart xray.service?'; then
         echo 'Restarting xray.service'
         if ! systemctl restart xray; then
             echo 'Failed to restart xray.service'
@@ -201,7 +201,7 @@ install_geodat() {
     install -D -m 644 "${tmp_dir}/geosite.dat" "${ASSET_PATH}"
     echo "Removing ${tmp_dir}"
     rm -rf "${tmp_dir}"
-    if [[ -f "${SERVICE_PATH}/xray.service" ]]; then
+    if [[ -f "${SERVICE_PATH}/xray.service" ]] && confirm 'Restart xray.service?'; then
         echo 'Restarting xray.service'
         if ! systemctl restart xray; then
             echo 'Failed to restart xray.service'
