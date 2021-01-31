@@ -86,10 +86,10 @@ if [[ "$(uname)" == 'Linux' ]]; then
             XRAY_ARCHIVE_NAME='Xray-linux-64.zip'
             ;;
         'armv8' | 'aarch64')
+            XRAY_ARCHIVE_NAME='Xray-linux-arm64-v8a.zip'
             if [[ "$(uname -o)" == 'Android' ]]; then
                 XRAY_ARCHIVE_NAME='Xray-android-arm64-v8a.zip'
             fi
-            XRAY_ARCHIVE_NAME='Xray-linux-arm64-v8a.zip'
             ;;
     esac
 fi
