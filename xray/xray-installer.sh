@@ -54,7 +54,7 @@ dl() {
 # Check if running as the specified user
 check_user() {
     if [[ -z "$1" ]]; then
-        echo 'function check_user() require an argument'
+        echo 'function check_user() requires an argument'
         exit 1
     fi
     if [[ $(id -u) != "$1" ]]; then
@@ -80,19 +80,19 @@ EOF
 
 # Get Xray archive name
 get_xray_archive_name() {
-if [[ "$(uname)" == 'Linux' ]]; then
-    case "$(uname -m)" in
-        'amd64' | 'x86_64')
-            XRAY_ARCHIVE_NAME='Xray-linux-64.zip'
-            ;;
-        'armv8' | 'aarch64')
-            XRAY_ARCHIVE_NAME='Xray-linux-arm64-v8a.zip'
-            if [[ "$(uname -o)" == 'Android' ]]; then
-                XRAY_ARCHIVE_NAME='Xray-android-arm64-v8a.zip'
-            fi
-            ;;
-    esac
-fi
+    if [[ "$(uname)" == 'Linux' ]]; then
+        case "$(uname -m)" in
+            'amd64' | 'x86_64')
+                XRAY_ARCHIVE_NAME='Xray-linux-64.zip'
+                ;;
+            'armv8' | 'aarch64')
+                XRAY_ARCHIVE_NAME='Xray-linux-arm64-v8a.zip'
+                if [[ "$(uname -o)" == 'Android' ]]; then
+                    XRAY_ARCHIVE_NAME='Xray-android-arm64-v8a.zip'
+                fi
+                ;;
+        esac
+    fi
 }
 
 # Install Xray
@@ -224,7 +224,7 @@ remove() {
             local to_be_removed=("${BIN_PATH}/xray" "${SERVICE_PATH}/xray.service" "${ASSET_PATH}" "${CONFIG_PATH}" "${LOG_PATH}")
             ;;
         *)
-            echo 'function remove() require an valid argument(xray, geodat, purge)'
+            echo 'function remove() requires an valid argument(xray, geodat, purge)'
             exit 1
             ;;
     esac
