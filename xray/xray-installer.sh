@@ -8,8 +8,8 @@ set -e
 export ASSET_PATH=${XRAY_LOCATION_ASSET:-/usr/local/share/xray}
 export BIN_PATH='/usr/local/bin'
 export CONFIG_PATH=${XRAY_LOCATION_CONFIG:-/usr/local/etc/xray}
-export GEOIP_URL='https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat'
-export GEOSITE_URL='https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat'
+export GEOIP_URL='https://github.com/v2fly/geoip/releases/latest/download/geoip.dat'
+export GEOSITE_URL='https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat'
 export LOG_PATH='/var/log/xray'
 # export PROXY='socks5h://127.0.0.1:1080'
 export SERVICE_PATH='/etc/systemd/system'
