@@ -48,7 +48,7 @@ confirm() {
 
 # Download file from the given url via curl
 dl() {
-    curl -x "${PROXY}" -L --progress-bar "$1" -o "$2"
+    curl -m 30 -x "${PROXY}" -L --progress-bar "$1" -o "$2"
 }
 
 # Check if running as the specified user
