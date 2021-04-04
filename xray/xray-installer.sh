@@ -8,6 +8,7 @@ set -e
 export ASSET_PATH=${XRAY_LOCATION_ASSET:-/usr/local/share/xray}
 export BIN_PATH='/usr/local/bin'
 export CONFIG_PATH=${XRAY_LOCATION_CONFIG:-/usr/local/etc/xray}
+export CURL_TIMEOUT=30
 export GEOIP_URL='https://github.com/v2fly/geoip/releases/latest/download/geoip.dat'
 export GEOSITE_URL='https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat'
 export LOG_PATH='/var/log/xray'
@@ -48,7 +49,7 @@ confirm() {
 
 # Download file from the given url via curl
 dl() {
-    curl -m 30 -x "${PROXY}" -L --progress-bar "$1" -o "$2"
+    curl -m "${CURL_TIMEOUT}" -x "${PROXY}" -L --progress-bar "$1" -o "$2"
 }
 
 # Check if running as the specified user
@@ -69,6 +70,7 @@ show_env() {
 ASSET_PATH=${ASSET_PATH}
 BIN_PATH=${BIN_PATH}
 CONFIG_PATH=${CONFIG_PATH}
+CURL_TIMEOUT=${CURL_TIMEOUT}
 GEOIP_URL=${GEOIP_URL}
 GEOSITE_URL=${GEOSITE_URL}
 LOG_PATH=${LOG_PATH}

@@ -41,6 +41,7 @@ You can edit these values to customize the installation.
 export ASSET_PATH=${XRAY_LOCATION_ASSET:-/usr/local/share/xray}
 export BIN_PATH='/usr/local/bin'
 export CONFIG_PATH=${XRAY_LOCATION_CONFIG:-/usr/local/etc/xray}
+export CURL_TIMEOUT=30
 export GEOIP_URL='https://github.com/v2fly/geoip/releases/latest/download/geoip.dat'
 export GEOSITE_URL='https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat'
 export LOG_PATH='/var/log/xray'
