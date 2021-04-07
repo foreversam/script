@@ -1,4 +1,4 @@
-# [xray-installer.sh](https://raw.githubusercontent.com/foreversam/script/main/xray/xray-installer.sh)
+# xray-installer.sh
 
 An [Xray](https://github.com/XTLS/Xray-core) installation script
 
@@ -13,7 +13,7 @@ $ sudo apt install curl unzip
 Download this script via curl.
 
 ```
-$ sudo curl -LO --progress-bar 'https://raw.githubusercontent.com/foreversam/script/main/xray/xray-installer.sh'
+$ sudo curl -LO --progress-bar 'https://raw.githubusercontent.com/foreversam/script/main/xray-installer.sh/xray-installer.sh'
 $ sudo chmod +x ./xray-installer.sh
 ```
 
