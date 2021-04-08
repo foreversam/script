@@ -1,0 +1,91 @@
+{
+    "log": {
+        "access": "none",
+        "loglevel": "warning"
+    },
+    "routing": {
+        "domainStrategy": "AsIs",
+        "rules": [
+            {
+                "type": "field",
+                "protocol": [
+                    "bittorrent"
+                ],
+                "outboundTag": "blackhole-out"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "geosite:private",
+                    "geosite:cn"
+                ],
+                "outboundTag": "blackhole-out"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "geoip:private",
+                    "geoip:cn"
+                ],
+                "outboundTag": "blackhole-out"
+            }
+        ]
+    },
+    "inbounds": [
+        {
+            "listen": "0.0.0.0",
+            "port": 443,
+            "protocol": "vless",
+            "settings": {
+                "clients": [
+                    {
+                        "id": "0ece3304-25bd-4c97-9f03-7b6f950bf2cc",
+                        "flow": "xtls-rprx-direct",
+                        "email": ""
+                    }
+                ],
+                "decryption": "none",
+                "fallbacks": [
+                    {
+                        "dest": "127.0.0.1:80"
+                    }
+                ]
+            },
+            "streamSettings": {
+                "network": "tcp",
+                "security": "xtls",
+                "xtlsSettings": {
+                    "alpn": [
+                        "http/1.1"
+                    ],
+                    "minVersion": "1.2",
+                    "preferServerCipherSuites": true,
+                    "cipherSuites": "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
+                    "certificates": [
+                        {
+                            "ocspStapling": 3600,
+                            "certificateFile": "pathToCertificateFile",
+                            "keyFile": "pathToKeyFile"
+                        }
+                    ]
+                }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls"
+                ]
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom"
+        },
+        {
+            "protocol": "blackhole",
+            "tag": "blackhole-out"
+        }
+    ]
+}
