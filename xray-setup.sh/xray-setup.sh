@@ -176,7 +176,7 @@ install_acmesh() {
 
 issue_cert() {
     echo "Issuing a cert for ${DOMAIN}, www.${DOMAIN}"
-    acme.sh --issue -d "${DOMAIN}" -d "www.${DOMAIN}" -w "/var/www/${DOMAIN}/public" --keylength ec-256
+    ~/.acme.sh/acme.sh --issue -d "${DOMAIN}" -d "www.${DOMAIN}" -w "/var/www/${DOMAIN}/public" --keylength ec-256
     echo 'Installing the cert'
     mkdir -p "${CERT_PATH}"
     ~/.acme.sh/acme.sh --install-cert -d "${DOMAIN}" --key-file "${KEY_FILE}" --fullchain-file "${FULLCHAIN_FILE}" --reloadcmd "systemctl restart nginx xray" --ocsp --ecc
