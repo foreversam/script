@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A bash script for setting up Xray server on Debian
+# A bash script for setting up Xray VLESS server on Debian
 # License: MIT
 
 set -eu
@@ -86,6 +86,8 @@ install_nginx() {
     mkdir -p /etc/nginx/sites-enabled
     rm -f /etc/nginx/sites-enabled/*
     mkdir -p "/var/www/${DOMAIN}/public"
+    mkdir -p /var/www/acme-challenge
+    chown www-data /var/www/acme-challenge
     cat > "/var/www/${DOMAIN}/public/index.html" << EOF
 <!DOCTYPE html>
 <html><head><title>${DOMAIN}</title></head><body>Hello, world!</body></html>
@@ -102,7 +104,7 @@ EOF
     local NGINX_SITE_ENABLED_FILE="${tmp_dir}/${DOMAIN}.conf"
     download "${NGINX_CONF_URL}" "${NGINX_CONF_FILE}"
     download "${NGINX_SITE_ENABLED_URL}" "${NGINX_SITE_ENABLED_FILE}"
-    sed -i "s/example.com/${DOMAIN}/" "${NGINX_CONF_FILE}"
+    sed -i "s/example.com/${DOMAIN}/" "${NGINX_SITE_ENABLED_FILE}"
 
     echo 'Installing nginx config'
     install -D -m 644 "${NGINX_CONF_FILE}" /etc/nginx/nginx.conf
@@ -112,9 +114,14 @@ EOF
     echo 'Removing temp dir'
     rm -rf "${tmp_dir}"
 
-    if confirm 'Review nginx config?'; then
-        vi /etc/nginx/nginx.conf "/etc/nginx/sites-enabled/${DOMAIN}.conf"
-    fi
+    while true; do
+        nginx -t
+        if confirm 'Edit nginx config?'; then
+            vi /etc/nginx/nginx.conf "/etc/nginx/sites-enabled/${DOMAIN}.conf"
+        else
+            break
+        fi
+    done
 }
 
 install_xray() {
@@ -135,8 +142,7 @@ install_xray() {
     download "${GEOSITE_URL}" "${tmp_dir}/geodata/geosite.dat"
 
     echo 'Downloading example config'
-    mkdir "${tmp_dir}/config"
-    download "${XRAY_CONFIG_URL}" "${tmp_dir}/config/config.json"
+    download "${XRAY_CONFIG_URL}" "${tmp_dir}/config.json"
 
     echo 'Downloading xray.service'
     download "${XRAY_SERVICE_URL}" "${tmp_dir}/xray.service"
@@ -148,13 +154,13 @@ install_xray() {
     install -D -m 755 "${tmp_dir}/xray/xray" "${XRAY_BIN_PATH}/xray"
     install -D -m 644 "${tmp_dir}/geodata/geoip.dat" "${XRAY_ASSET_PATH}/geoip.dat"
     install -D -m 644 "${tmp_dir}/geodata/geosite.dat" "${XRAY_ASSET_PATH}/geosite.dat"
-    install -D -m 644 "${tmp_dir}/config/config.json" "${XRAY_CONFIG_PATH}/config.json"
+    install -D -m 644 "${tmp_dir}/config.json" "${XRAY_CONFIG_PATH}/config.json"
     install -D -m 644 "${tmp_dir}/xray.service" "${XRAY_SERVICE_PATH}/xray.service"
     systemctl daemon-reload
 
     echo 'Removing temp dir'
     rm -rf "${tmp_dir}"
-    
+
     echo 'Updating Xray config'
     local uuid
     uuid="$(xray uuid)"
@@ -163,8 +169,18 @@ install_xray() {
     sed -i "s|pathToCertificateFile|${FULLCHAIN_FILE}|" "${xray_config}"
     sed -i "s|pathToKeyFile|${KEY_FILE}|" "${xray_config}"
 
-    if confirm 'Review Xray config?'; then
-        vi "${xray_config}"
+    while true; do
+        xray run -test -c "${xray_config}"
+        if confirm 'Edit Xray config?'; then
+            vi "${xray_config}"
+        else
+            break
+        fi
+    done
+
+    if ! grep -q 'XRAY_LOCATION_' ~/.bashrc && confirm "Add Xray env to '~/.bashrc'?"; then
+        echo "export XRAY_LOCATION_ASSET=${XRAY_ASSET_PATH}" >> ~/.bashrc
+        echo "export XRAY_LOCATION_CONFIG=${XRAY_CONFIG_PATH}" >> ~/.bashrc
     fi
 }
 
@@ -176,7 +192,7 @@ install_acmesh() {
 
 issue_cert() {
     echo "Issuing a cert for ${DOMAIN}, www.${DOMAIN}"
-    ~/.acme.sh/acme.sh --issue -d "${DOMAIN}" -d "www.${DOMAIN}" -w "/var/www/${DOMAIN}/public" --keylength ec-256
+    ~/.acme.sh/acme.sh --issue -d "${DOMAIN}" -d "www.${DOMAIN}" -w /var/www/acme-challenge --keylength ec-256
     echo 'Installing the cert'
     mkdir -p "${CERT_PATH}"
     ~/.acme.sh/acme.sh --install-cert -d "${DOMAIN}" --key-file "${KEY_FILE}" --fullchain-file "${FULLCHAIN_FILE}" --reloadcmd "systemctl restart nginx xray" --ocsp --ecc
@@ -190,12 +206,17 @@ main() {
         exit
     fi
     check_user 0
+    echo 'Starting'
     install_nginx
     install_xray
     install_acmesh
-    systemctl start nginx
+    if ! systemctl start nginx; then
+        echo 'Failed to start nginx. Exiting'
+        exit 1
+    fi
     issue_cert
     systemctl status nginx xray
+    echo 'Finished'
 }
 
 main
