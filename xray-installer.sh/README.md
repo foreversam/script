@@ -33,7 +33,7 @@ Options:
   -h, --help                            show this help message
 
 Assets:
-  config   an example xray vless server config
+  config   an example config.json
   geoip    geoip.dat for routing
   geosite  geosite.dat for routing
   service  an example xray.service

@@ -14,7 +14,7 @@ Options:
   -h, --help                            show this help message
 
 Assets:
-  config   an example xray vless server config
+  config   an example config.json
   geoip    geoip.dat for routing
   geosite  geosite.dat for routing
   service  an example xray.service
@@ -217,6 +217,7 @@ remove_this() {
 main() {
     if [[ "$#" -eq 0 ]]; then
         show_help
+        exit 1
     fi
 
     if ! parsed=$(getopt -n "$0" -o x:h -l install:,remove:,proxy:,show-config,help -- "$@"); then
@@ -246,7 +247,7 @@ main() {
                 shift 2
                 ;;
             '--show-config')
-                if_show_config=true
+                show_config
                 shift
                 ;;
             '-h' | '--help')
@@ -260,13 +261,10 @@ main() {
             *)
                 echo "Invalid option: '$1'"
                 show_help
+                exit 1
                 ;;
         esac
     done
-
-    if $if_show_config; then
-        show_config
-    fi
 
     if [[ "$asset_to_be_installed" != '' ]]; then
         install_this "$asset_to_be_installed"
