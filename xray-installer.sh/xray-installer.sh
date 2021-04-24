@@ -61,7 +61,7 @@ load_config() {
     curl_timeout=60
     geoip_url='https://github.com/v2fly/geoip/releases/latest/download/geoip.dat'
     geosite_url='https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat'
-    if_show_config=false
+    proxy="$http_proxy"
     xray_archive_url='https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip'
     xray_assets_path=/usr/local/share/xray
     xray_bin_path=/usr/local/bin
