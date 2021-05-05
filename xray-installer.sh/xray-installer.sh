@@ -7,6 +7,7 @@ $0 - install xray
 Usage: $0 [options]
 
 Options:
+  -c, --config <file>                   specify the config file
   --install <asset>                     install the specified asset
   --remove <asset>                      remove the specified asset
   -x, --proxy [protocol://]host[:port]  use the specified proxy
@@ -55,9 +56,8 @@ check_user() {
     fi
 }
 
-# load_config [file]
-load_config() {
-    # Set some default values
+set_default_values() {
+    config="$HOME/.config/xray-installer.sh/config"
     curl_timeout=60
     geoip_url='https://github.com/v2fly/geoip/releases/latest/download/geoip.dat'
     geosite_url='https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat'
@@ -69,15 +69,18 @@ load_config() {
     xray_config_url='https://raw.githubusercontent.com/foreversam/config/main/xray/server.json'
     xray_service_path=/etc/systemd/system
     xray_service_url='https://raw.githubusercontent.com/foreversam/config/main/xray/xray.service'
+}
 
+# load_config <file>
+load_config() {
     if [[ -r "$1" ]]; then
-        echo "Loading config: $1"
         . "$1"
     fi
 }
 
 show_config() {
     cat << EOF
+config=$config
 curl_timeout=$curl_timeout
 geoip_url=$geoip_url
 geosite_url=$geosite_url
@@ -220,7 +223,7 @@ main() {
         exit 1
     fi
 
-    if ! parsed=$(getopt -n "$0" -o x:h -l install:,remove:,proxy:,show-config,help -- "$@"); then
+    if ! parsed=$(getopt -n "$0" -o c:x:h -l config:,install:,remove:,proxy:,show-config,help -- "$@"); then
         show_help
         exit 1
     fi
@@ -230,10 +233,15 @@ main() {
         exit 1
     fi
 
-    load_config "$HOME/.config/xray-installer.sh/config"
+    set_default_values
+    local if_show_config=false
 
     while true; do
         case "$1" in
+            '-c' | '--config')
+                config="$2"
+                shift 2
+                ;;
             '--install')
                 asset_to_be_installed="$2"
                 shift 2
@@ -247,7 +255,7 @@ main() {
                 shift 2
                 ;;
             '--show-config')
-                show_config
+                if_show_config=true
                 shift
                 ;;
             '-h' | '--help')
@@ -265,6 +273,12 @@ main() {
                 ;;
         esac
     done
+
+    load_config "$config"
+
+    if "$if_show_config"; then
+        show_config
+    fi
 
     if [[ "$asset_to_be_installed" != '' ]]; then
         install_this "$asset_to_be_installed"

@@ -26,6 +26,7 @@ This will print the help message.
 Usage: ./xray-installer.sh [options]
 
 Options:
+  -c, --config <file>                   specify the config file
   --install <asset>                     install the specified asset
   --remove <asset>                      remove the specified asset
   -x, --proxy [protocol://]host[:port]  use the specified proxy
