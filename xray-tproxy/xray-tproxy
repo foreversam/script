@@ -1,0 +1,133 @@
+#!/bin/sh /etc/rc.common
+# An init script for xray-core on OpenWrt
+
+export XRAY_LOCATION_ASSET=/usr/share/xray
+DOKODEMO_DOOR_PORT=3346
+XRAY_USER=xray-tproxy
+XRAY_GID=50000
+XRAY_CONFIG=/etc/xray/config.json
+XRAY_PID_FILE=/run/xray.pid
+XRAY_LOG_DIR=/var/log/xray
+
+MARK_ID=1
+TABLE_ID=100
+
+START=99
+EXTRA_COMMANDS='status'
+EXTRA_HELP='        status          Show status of xray'
+
+status() {
+    if [ -f "$XRAY_PID_FILE" ]; then
+        echo "Xray PID: $(cat "$XRAY_PID_FILE")"
+    else
+        echo 'Stopped'
+    fi
+}
+
+start_xray() {
+    if [ -f "$XRAY_PID_FILE" ]; then
+        echo "Xray(PID: $(cat "$XRAY_PID_FILE")) is running. Do nothing."
+        return 1
+    fi
+
+    [ -d "$XRAY_LOG_DIR" ] || mkdir "$XRAY_LOG_DIR"
+
+    if sudo -u "$XRAY_USER" xray -test -c "$XRAY_CONFIG"; then
+        echo 'Starting xray'
+        ulimit -n 524288
+        nohup sudo -u "$XRAY_USER" xray -c "$XRAY_CONFIG" > /dev/null 2>&1 &
+        xray_pid=$!
+        printf "%s" "$xray_pid" > "$XRAY_PID_FILE"
+        sleep 2
+    else
+        return 1
+    fi
+
+    status
+}
+
+stop_xray() {
+    if [ -f "$XRAY_PID_FILE" ]; then
+        echo 'Stopping xray'
+        kill "$(cat "$XRAY_PID_FILE")"
+        rm -f "$XRAY_PID_FILE"
+        sleep 2
+    fi
+
+    status
+}
+
+start_tproxy() {
+    echo 'Starting tproxy'
+    ip rule add fwmark $MARK_ID table $TABLE_ID
+    ip route add local 0.0.0.0/0 dev lo table $TABLE_ID
+
+    iptables -t mangle -N XRAY
+
+    iptables -t mangle -A XRAY -d 0.0.0.0/8 -j RETURN
+    iptables -t mangle -A XRAY -d 10.0.0.0/8 -j RETURN
+    iptables -t mangle -A XRAY -d 100.64.0.0/10 -j RETURN
+    iptables -t mangle -A XRAY -d 127.0.0.0/8 -j RETURN
+    iptables -t mangle -A XRAY -d 169.254.0.0/16 -j RETURN
+    iptables -t mangle -A XRAY -d 172.16.0.0/12 -j RETURN
+    iptables -t mangle -A XRAY -d 192.0.0.0/24 -j RETURN
+    iptables -t mangle -A XRAY -d 192.0.2.0/24 -j RETURN
+    iptables -t mangle -A XRAY -d 192.88.99.0/24 -j RETURN
+    iptables -t mangle -A XRAY -d 192.168.0.0/16 -j RETURN
+    iptables -t mangle -A XRAY -d 198.18.0.0/15 -j RETURN
+    iptables -t mangle -A XRAY -d 198.51.100.0/24 -j RETURN
+    iptables -t mangle -A XRAY -d 203.0.113.0/24 -j RETURN
+    iptables -t mangle -A XRAY -d 224.0.0.0/4 -j RETURN
+    iptables -t mangle -A XRAY -d 240.0.0.0/4 -j RETURN
+    iptables -t mangle -A XRAY -d 255.255.255.255/32 -j RETURN
+
+    iptables -t mangle -A XRAY -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port $DOKODEMO_DOOR_PORT --tproxy-mark $MARK_ID
+    iptables -t mangle -A XRAY -p udp -j TPROXY --on-ip 127.0.0.1 --on-port $DOKODEMO_DOOR_PORT --tproxy-mark $MARK_ID
+
+    iptables -t mangle -A PREROUTING -j XRAY
+
+    iptables -t mangle -N XRAY_MASK
+
+    iptables -t mangle -A XRAY_MASK -d 0.0.0.0/8 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 10.0.0.0/8 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 100.64.0.0/10 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 127.0.0.0/8 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 169.254.0.0/16 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 172.16.0.0/12 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 192.0.0.0/24 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 192.0.2.0/24 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 192.88.99.0/24 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 192.168.0.0/16 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 198.18.0.0/15 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 198.51.100.0/24 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 203.0.113.0/24 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 224.0.0.0/4 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 240.0.0.0/4 -j RETURN
+    iptables -t mangle -A XRAY_MASK -d 255.255.255.255/32 -j RETURN
+
+    iptables -t mangle -A XRAY_MASK -m owner --gid-owner $XRAY_GID -j RETURN
+
+    iptables -t mangle -A OUTPUT -j XRAY_MASK
+}
+
+stop_tproxy() {
+    echo 'Stopping tproxy'
+    ip rule del fwmark $MARK_ID table $TABLE_ID
+    ip route flush table $TABLE_ID
+
+    iptables -t mangle -D OUTPUT -j XRAY_MASK
+    iptables -t mangle -D PREROUTING -j XRAY
+    iptables -t mangle -F XRAY_MASK
+    iptables -t mangle -F XRAY
+    iptables -t mangle -X XRAY_MASK
+    iptables -t mangle -X XRAY
+}
+
+start() {
+    start_xray && start_tproxy
+}
+
+stop() {
+    stop_tproxy
+    stop_xray
+}
